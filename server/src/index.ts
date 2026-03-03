@@ -147,14 +147,15 @@ app.get('/api/seed-categories-securely', async (req: Request, res: Response) => 
 // --- 5. FRONTEND SERVING ---
 const clientPath = path.join(__dirname, '../../client/dist');
 app.use(express.static(clientPath));
-app.get('/*', (req: Request, res: Response) => {
+app.get('/:any*', (req: Request, res: Response) => {
     if (!req.path.startsWith('/api')) {
         res.sendFile(path.join(clientPath, 'index.html'), (err) => {
-            if (err) res.status(404).send('Frontend not built or index.html missing');
+            if (err) {
+                res.status(404).send('Frontend not built or index.html missing');
+            }
         });
     }
 });
-
 
 // --- 6. ERROR HANDLING ---
 app.use(errorHandler);
