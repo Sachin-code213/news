@@ -1,9 +1,11 @@
-import { IUser } from '../models/User'; // Import your User interface
+import { IUser } from '../models/User';
 
 declare global {
     namespace Express {
         interface Request {
-            user?: any; // This tells TypeScript that 'req.user' is valid
+            user?: any;  // Or replace 'any' with IUser if you prefer
+            file?: any;  // Required for Multer (single upload)
+            files?: any; // Required for Multer (multiple uploads)
         }
     }
 }
