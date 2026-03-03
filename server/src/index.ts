@@ -32,6 +32,8 @@ import seoRoutes from './routes/seoRoutes';
 import electionRoutes from './routes/electionRoutes';
 
 dotenv.config();
+
+// Fix for Node 22 DNS issues sometimes seen on cloud providers
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 const app: Express = express();
@@ -39,9 +41,8 @@ const PORT = process.env.PORT || 10000;
 
 // --- 1. GLOBAL MIDDLEWARE ---
 
-// 🌍 1. UPDATED CORS: Handles both Local Dev and Production Vercel URL
 const allowedOrigins = [
-    process.env.CLIENT_URL, // Your Vercel URL (e.g. https://khabarpoint.vercel.app)
+    process.env.CLIENT_URL,
     'http://localhost:5173',
     'http://localhost:3000'
 ];
@@ -89,12 +90,12 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 // --- 2. STATIC ASSETS ---
-// 🖼️ FIX: Use absolute path for uploads to work on Render/Linux
-const uploadsPath = path.resolve(__dirname, '../uploads');
+// Use path.join for cross-platform compatibility
+const uploadsPath = path.join(__dirname, '../uploads');
 app.use('/uploads', express.static(uploadsPath));
 
 // --- 3. API ROUTES ---
-app.use('/', seoRoutes);
+app.use('/api/seo', seoRoutes); // Added prefix for clarity
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/articles', articleRoutes);
@@ -107,10 +108,8 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/election', electionRoutes);
 
-// --- 4. SECURE SEED ROUTE (UPDATED) ---
-// ⚠️ WARNING: Remove or comment this out completely after your first successful production seed!
+// --- 4. SECURE SEED ROUTE ---
 app.get('/api/seed-categories-securely', async (req: Request, res: Response) => {
-    // Only allow this if a specific SEED_KEY matches in your .env
     const seedKey = req.query.key;
     if (process.env.NODE_ENV === 'production' && seedKey !== process.env.ADMIN_SEED_KEY) {
         return res.status(403).json({ success: false, message: "Unauthorized access" });
@@ -145,21 +144,16 @@ app.get('/api/seed-categories-securely', async (req: Request, res: Response) => 
     }
 });
 
-// --- 5. FRONTEND SERVING (MODIFIED FOR HYBRID DEPLOYMENT) ---
-const clientPath = path.resolve(__dirname, '../client/dist');
-
-// Only serve the static frontend if the files actually exist (for Render monorepo style)
-// If you use Vercel for Frontend, this block is ignored but safe to keep.
+// --- 5. FRONTEND SERVING ---
+const clientPath = path.join(__dirname, '../../client/dist');
 app.use(express.static(clientPath));
 
-app.get(/^((?!\/api).)*$/, (req: Request, res: Response) => {
-    const indexPath = path.join(clientPath, 'index.html');
-    res.sendFile(indexPath, (err) => {
-        if (err) {
-            // If index.html isn't found, just return a 404 for non-API routes
-            res.status(404).send('Resource not found');
-        }
-    });
+app.get('*', (req: Request, res: Response) => {
+    if (!req.path.startsWith('/api')) {
+        res.sendFile(path.join(clientPath, 'index.html'), (err) => {
+            if (err) res.status(404).send('Frontend not built or index.html missing');
+        });
+    }
 });
 
 // --- 6. ERROR HANDLING ---
