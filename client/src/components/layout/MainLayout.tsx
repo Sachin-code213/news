@@ -109,21 +109,48 @@ const MainLayout: React.FC<MainLayoutProps> = ({ toggleDarkMode, darkMode }) => 
 
             {/* Main Content Area */}
             <main className="container mx-auto px-4 py-8 flex-grow">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                    <div className="md:col-span-3">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+
+                    {/* LEFT CONTENT */}
+                    <div className="lg:col-span-3">
                         <Outlet context={{ darkMode }} />
                         <div className="mt-12">
                             <AdSpace position="home-middle" />
                         </div>
                     </div>
 
-                    <aside className="md:col-span-1 hidden md:block">
-                        <div className="sticky top-32 space-y-6">
-                            <TrendingSidebar />
-                            <AdSpace position="sidebar-top" />
-                            <AdSpace position="sidebar-sticky" />
+                    {/* RIGHT SIDEBAR - FIXED RESPONSIVENESS */}
+                    {/* Removed 'hidden md:block'. Now it shows on all devices. */}
+                    <aside className="lg:col-span-1 w-full space-y-8">
+
+                        {/* 1. Trending Sidebar */}
+                        <TrendingSidebar />
+
+                        {/* 2. Sidebar Ad Top */}
+                        <AdSpace position="sidebar-top" />
+
+                        {/* 3. 🚀 RESPONSIVE STICKY AD SLOT (Just below sidebar) */}
+                        <div className="lg:sticky lg:top-32 space-y-4">
+                            <div className="group relative">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        {lang === 'en' ? 'Sponsored' : 'प्रायोजित'}
+                                    </span>
+                                </div>
+                                <div className="p-2 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-900/20">
+                                    <AdSpace position="sidebar-sticky" className="w-full rounded-xl overflow-hidden" />
+                                </div>
+                            </div>
+
+                            {/* Professional touch */}
+                            <p className="text-[10px] text-slate-400 px-2 leading-tight">
+                                {lang === 'en'
+                                    ? 'Support KhabarPoint by viewing our partner content.'
+                                    : 'हाम्रो पार्टनर सामग्री हेरेर खबरप्वाइन्टलाई समर्थन गर्नुहोस्।'}
+                            </p>
                         </div>
                     </aside>
+
                 </div>
             </main>
 

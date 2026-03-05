@@ -29,21 +29,31 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
 
-  /* 🚀 SPEED & DIRECTION UPDATE */
-  /* 8s is fast. 5s is lightning fast. */
-  --animate-ticker-right: ticker-fast-right 6s linear infinite;
+  /* 🚀 UNIFORM INFINITE TICKER: 
+     We move from 0 to -50%. Because the NewsTicker component 
+     duplicates the list, -50% marks the exact start of the second set,
+     creating a seamless, infinite loop. */
+  --animate-ticker-right: ticker-infinite 35s linear infinite;
 
-  @keyframes ticker-fast-right {
-    from {
-      /* This pulls from the left side */
-      transform: translateX(-50%);
-    }
-
-    to {
-      /* This moves it toward the right */
+  @keyframes ticker-infinite {
+    0% {
       transform: translateX(0%);
     }
+
+    100% {
+      transform: translateX(-50%);
+    }
   }
+}
+
+/* 📱 Layout Fix: Prevents horizontal scroll on all devices */
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  position: relative;
+  margin: 0;
+  padding: 0;
 }
 
 /* 🛠️ CUSTOM UTILITIES */
@@ -51,6 +61,14 @@
   &:hover .animate-ticker-right {
     animation-play-state: paused !important;
   }
+}
+
+/* Ticker Specific Container Logic */
+.ticker-container {
+  display: flex;
+  width: max-content;
+  /* Prevents text from squishing */
+  flex-wrap: nowrap;
 }
 
 :root {
@@ -100,13 +118,17 @@
 
 @layer base {
   * {
-    @apply border-border outline-none focus-visible:ring-2 focus-visible:ring-ring/50;
+    @apply border-border outline-none;
   }
 
   body {
     background-color: var(--background);
     color: var(--foreground);
-    @apply font-sans transition-colors duration-300;
+    @apply font-sans transition-colors duration-300 overflow-x-hidden w-full m-0 p-0;
+  }
+
+  #root {
+    @apply w-full max-w-full overflow-x-hidden;
   }
 
   h1,

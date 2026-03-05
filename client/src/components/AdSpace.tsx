@@ -3,27 +3,23 @@ import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 
 interface AdSpaceProps {
-    // 🚀 FIXED: Expanded to match all slots in MainLayout
     position: 'top-leaderboard' | 'home-middle' | 'sidebar-top' | 'sidebar-sticky' | 'sidebar' | 'top-banner' | 'in-article';
+    // 🚀 FIXED: Added className to the interface
+    className?: string;
 }
 
-const AdSpace: React.FC<AdSpaceProps> = ({ position }) => {
+const AdSpace: React.FC<AdSpaceProps> = ({ position, className = "" }) => {
     const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-    // client/src/components/AdSpace.tsx
-
     const { data: ad, isLoading } = useQuery({
-        // Only run the query if 'position' is truthy
         enabled: !!position,
         queryKey: ['ads', position],
         queryFn: async () => {
             try {
-                // 🚀 Ensure we use the exact param name the backend expects
                 const { data } = await axios.get(`${baseUrl}/api/ads`, {
-                    params: { position: position } // Explicitly sending ?position=...
+                    params: { position: position }
                 });
 
-                // Handle standard response formats
                 const adData = data?.data || data;
 
                 if (Array.isArray(adData)) {
@@ -36,25 +32,31 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position }) => {
             }
         }
     });
+
     if (isLoading || !ad || !ad.isActive) {
         return null;
     }
 
-    // 🎨 Dynamic UI adjustments based on position
     const getLayoutClasses = () => {
+        let baseClasses = "";
         switch (position) {
             case 'top-leaderboard':
-                return "w-full h-24 md:h-32 mb-4";
+                baseClasses = "w-full h-24 md:h-32 mb-4";
+                break;
             case 'sidebar-top':
             case 'sidebar-sticky':
             case 'sidebar':
-                return "w-full aspect-square mb-6";
+                baseClasses = "w-full aspect-square mb-6";
+                break;
             case 'home-middle':
             case 'in-article':
-                return "w-full h-auto my-8";
+                baseClasses = "w-full h-auto my-8";
+                break;
             default:
-                return "w-full h-auto";
+                baseClasses = "w-full h-auto";
         }
+        // 🚀 Combine internal classes with the custom 'className' prop
+        return `${baseClasses} ${className}`;
     };
 
     return (
@@ -66,7 +68,6 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position }) => {
                         alt={ad.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    {/* Dark Overlay for better text visibility if needed */}
                     <div className="absolute inset-0 bg-black/5 group-hover:bg-transparent transition-colors" />
                 </div>
                 <span className="block text-[8px] font-black text-center text-slate-400 dark:text-slate-500 uppercase py-1 tracking-widest bg-white dark:bg-slate-900 border-t dark:border-slate-800">

@@ -3,17 +3,54 @@
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+  <title>KhabarPoint | Nepal's Leading Tech & Business News Portal</title>
+  <meta name="title" content="KhabarPoint | Nepal's Leading Tech & Business News Portal" />
+  <meta name="description"
+    content="KhabarPoint - Nepal's premier destination for tech news, business insights, and breaking headlines." />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://khabarpoint.onrender.com/" />
+  <meta property="og:title" content="KhabarPoint | Nepal's Leading News Portal" />
+  <meta property="og:description"
+    content="Stay updated with the latest breaking news, tech trends, and business insights from Nepal." />
+  <meta property="og:image" content="https://khabarpoint.onrender.com/logo-preview.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://khabarpoint.onrender.com/" />
+  <meta property="twitter:title" content="KhabarPoint | Tech & Business News" />
+  <meta property="twitter:description" content="Latest breaking news and insights from Nepal's premier news portal." />
+  <meta property="twitter:image" content="https://khabarpoint.onrender.com/logo-preview.jpg" />
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Merriweather:wght@400;700&display=swap"
     rel="stylesheet">
-  <title>KhabarPoint | Nepal's Leading Tech & Business News Portal</title>
+
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      overflow-x: hidden;
+      /* Stops the 'half page cutoff' feel */
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #root {
+      width: 100%;
+      max-width: 100vw;
+    }
+  </style>
 </head>
 
-<body>
+<body class="bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 transition-colors duration-300">
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
 </body>

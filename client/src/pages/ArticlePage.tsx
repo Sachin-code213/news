@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from 'react'; // 🚀 Added useEffect
+import React, { useMemo, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
@@ -8,14 +8,12 @@ import { useLanguage } from '../context/LanguageContext';
 import { LiveBadge } from '../components/ui/LiveBadge';
 import { Calendar, User, Facebook, Twitter, MessageCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { API } from '../context/AuthContext'; // 🚀 Import your API instance
 
 const ArticlePage: React.FC = () => {
     const { slug } = useParams();
     const { lang, t } = useLanguage();
 
-    // 🚀 1. VIEW TRACKER LOGIC
-    // This tells the backend "someone just read this!" so trending news can update.
+    // 🚀 1. VIEW TRACKER LOGIC (Maintained)
     useEffect(() => {
         const incrementView = async () => {
             try {
@@ -41,14 +39,35 @@ const ArticlePage: React.FC = () => {
         enabled: !!slug,
     });
 
-    // ... (Keep your existing meta-logic for title, content, sanitizedContent)
-    const title = lang === 'en' ? article?.titleEn : article?.titleNe;
-    const content = lang === 'en' ? article?.contentEn : article?.contentNe;
-    const excerpt = lang === 'en' ? article?.excerptEn : article?.excerptNe;
+    // 🚀 2. SMART CONTENT MAPPING (Fixed for Nepali visibility)
+    // We check if the field is strictly empty or just contains "empty" HTML tags
+    const title = lang === 'en'
+        ? (article?.titleEn || article?.titleNe)
+        : (article?.titleNe || article?.titleEn);
 
-    const sanitizedContent = useMemo(() =>
-        content ? DOMPurify.sanitize(content) : '', [content]
-    );
+    const rawContent = lang === 'en'
+        ? (article?.contentEn || article?.contentNe)
+        : (article?.contentNe || article?.contentEn);
+
+    const excerpt = lang === 'en'
+        ? (article?.excerptEn || article?.excerptNe)
+        : (article?.excerptNe || article?.excerptEn);
+
+    // 🚀 3. SECURE SANITIZATION (Fixed for Unicode/Nepali strings)
+    const sanitizedContent = useMemo(() => {
+        if (!rawContent) return '';
+
+        // Clean up "ghost" tags from editors (like <p><br></p>) before sanitizing
+        const checkEmpty = rawContent.replace(/<[^>]*>?/gm, '').trim();
+        if (checkEmpty.length === 0 && lang === 'ne' && article?.contentEn) {
+            return DOMPurify.sanitize(article.contentEn);
+        }
+
+        return DOMPurify.sanitize(rawContent, {
+            USE_PROFILES: { html: true },
+            ADD_ATTR: ['target', 'rel']
+        });
+    }, [rawContent, lang, article]);
 
     if (isLoading) {
         return (
@@ -90,6 +109,7 @@ const ArticlePage: React.FC = () => {
                 <meta name="description" content={excerpt} />
                 <meta property="og:title" content={title} />
                 <meta property="og:image" content={imageUrl} />
+                <meta property="og:description" content={excerpt} />
             </Helmet>
 
             <div className="space-y-4">
@@ -102,7 +122,7 @@ const ArticlePage: React.FC = () => {
                     {article.isLive && <LiveBadge />}
                 </div>
 
-                <h1 className="text-4xl md:text-5xl lg:text-6xl font-black leading-tight tracking-tight text-slate-900 dark:text-white">
+                <h1 className={`text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 dark:text-white ${lang === 'ne' ? 'leading-[1.2]' : 'leading-tight'}`}>
                     {title}
                 </h1>
 
@@ -138,9 +158,11 @@ const ArticlePage: React.FC = () => {
                 )}
             </figure>
 
+            {/* 🚀 4. TYPOGRAPHY FIX: Enhanced for Nepali Unicode scripts */}
             <div
-                className="prose prose-lg md:prose-xl max-w-none font-serif leading-relaxed text-slate-800 dark:text-slate-200
-                           prose-headings:font-sans prose-headings:font-black prose-a:text-red-600 prose-strong:dark:text-white"
+                className={`prose prose-lg md:prose-xl max-w-none text-slate-800 dark:text-slate-200
+                           prose-headings:font-sans prose-headings:font-black prose-a:text-red-600 prose-strong:dark:text-white
+                           ${lang === 'ne' ? 'font-sans leading-[1.8] text-[1.1rem]' : 'font-serif leading-relaxed'}`}
                 dangerouslySetInnerHTML={{ __html: sanitizedContent }}
             />
 
@@ -148,7 +170,7 @@ const ArticlePage: React.FC = () => {
 
             <div className="bg-slate-50 dark:bg-slate-800 p-8 rounded-3xl text-center space-y-4">
                 <h3 className="font-bold text-lg dark:text-white">
-                    {t('Share this story', 'यो समाचार सेयर गर्नुहोस्')}
+                    {lang === 'en' ? 'Share this story' : 'यो समाचार सेयर गर्नुहोस्'}
                 </h3>
                 <div className="flex justify-center gap-4">
                     <button onClick={shareOnFB} className="flex items-center gap-2 bg-white dark:bg-slate-700 px-6 py-2 rounded-full shadow-sm hover:shadow-md transition-all font-bold text-sm dark:text-white">

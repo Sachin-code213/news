@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import Hero from '../frontend/Hero';
 import TrendingSidebar from '../../components/TrendingSidebar';
 import CategoryGrid from '../frontend/CategoryGrid';
@@ -8,12 +8,14 @@ import NewsSection from '../frontend/NewsSection';
 import VideoGallery from '../../components/VideoGallery';
 import ElectionTally from '../../components/election/ElectionTally';
 import { useQuery } from '@tanstack/react-query';
-import { API } from '../../context/AuthContext';
+import { API, useAuth } from '../../context/AuthContext';
+import { Sparkles, ArrowRight, Info } from 'lucide-react';
+import { toast } from 'sonner';
 
 const HomePage: React.FC = () => {
     const { lang } = useLanguage();
+    const { user } = useAuth();
 
-    // 🚀 1. Fetch Global Settings (Master Switch)
     const { data: settings, isLoading: settingsLoading } = useQuery({
         queryKey: ['site-settings'],
         queryFn: async () => {
@@ -22,8 +24,7 @@ const HomePage: React.FC = () => {
         }
     });
 
-    // 🚀 2. Fetch Election Candidates
-    const { data: electionData = [], isLoading: electionLoading } = useQuery({
+    const { data: electionData = [] } = useQuery({
         queryKey: ['election-results'],
         queryFn: async () => {
             const res = await API.get('/api/election/results');
@@ -32,15 +33,6 @@ const HomePage: React.FC = () => {
         refetchInterval: 30000
     });
 
-    // 🔍 Console Debugging
-    useEffect(() => {
-        if (!settingsLoading) {
-            console.log("🛠️ MASTER SWITCH STATUS:", settings?.showElectionTally);
-            console.log("🗳️ CANDIDATES LOADED:", electionData.length);
-        }
-    }, [settings, electionData, settingsLoading]);
-
-    // 🚀 3. Fetch regular articles
     const { data: articles = [] } = useQuery({
         queryKey: ['home-articles-list'],
         queryFn: async () => {
@@ -49,78 +41,108 @@ const HomePage: React.FC = () => {
         }
     });
 
+    const handleProUpgrade = async () => {
+        if (!user) return toast.error(lang === 'en' ? "Login Required" : "लगइन आवश्यक छ");
+        try {
+            await API.post('/api/settings/pro-interest');
+            toast.success(lang === 'en' ? "Added to Waitlist!" : "प्रतीक्षा सूचीमा थपियो!");
+        } catch (err) {
+            toast.error(lang === 'en' ? "Something went wrong" : "केही गलत भयो");
+        }
+    };
+
     return (
-        <div className="space-y-10 pb-20 transition-colors duration-300">
-            {/* 1. Top Leaderboard Ad */}
-            <div className="container mx-auto px-4 pt-4">
-                <AdBanner position="top-leaderboard" className="mx-auto" />
-            </div>
+        <div className="w-full min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300">
+            <div className="space-y-6 md:space-y-10 pb-20">
 
-            {/* 🇳🇵 2. Live Election Tally Section (Conditional) */}
-            {/* Logic: Only show if settings exist, switch is ON, and we have at least one candidate */}
-            {!settingsLoading && settings?.showElectionTally && electionData.length > 0 && (
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8 animate-in fade-in slide-in-from-top-4 duration-1000">
-                    <ElectionTally
-                        candidates={electionData}
-                        title={settings.electionTitle || (lang === 'en' ? 'Live Election Count' : 'प्रत्यक्ष निर्वाचन परिणाम')}
-                    />
+                {/* 1. TOP AD - Professional Leaderboard */}
+                <div className="container mx-auto px-4 pt-4">
+                    <div className="w-full flex justify-center bg-slate-50 dark:bg-slate-900/50 rounded-xl py-2">
+                        <AdBanner position="top-leaderboard" className="max-w-full h-auto" />
+                    </div>
                 </div>
-            )}
 
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-10">
-                    <div className="lg:col-span-3 space-y-16">
-                        {/* Featured Stories Section */}
-                        <div className="space-y-6">
-                            <div className="flex items-center gap-4">
-                                <h2 className="text-xs font-black uppercase tracking-[0.3em] text-red-600">
-                                    {lang === 'en' ? 'Featured Stories' : 'मुख्य समाचार'}
-                                </h2>
-                                <div className="h-[1px] bg-slate-200 dark:bg-slate-800 flex-grow"></div>
-                            </div>
-                            <Hero />
-                        </div>
-
-                        {/* Politics Section */}
-                        <NewsSection
-                            title={lang === 'en' ? 'Politics' : 'राजनीति'}
-                            categorySlug="politics"
-                            limit={4}
+                {/* 🇳🇵 2. Election Tally */}
+                {!settingsLoading && settings?.showElectionTally && electionData.length > 0 && (
+                    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                        <ElectionTally
+                            candidates={electionData}
+                            title={settings.electionTitle || (lang === 'en' ? 'Live Count' : 'प्रत्यक्ष गणना')}
                         />
+                    </div>
+                )}
 
-                        <VideoGallery articles={articles} />
-                        <AdBanner position="home-middle" />
+                <main className="container mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 xl:gap-12 items-start">
 
-                        {/* Tech Section */}
-                        <NewsSection
-                            title={lang === 'en' ? 'Tech' : 'प्रविधि'}
-                            categorySlug="tech"
-                            limit={4}
-                            variant="grid"
-                        />
+                        {/* LEFT: Main Content */}
+                        <div className="lg:col-span-3 space-y-12 md:space-y-20">
+                            <section className="space-y-6">
+                                <Hero />
+                            </section>
 
-                        <div className="space-y-6">
-                            <div className="flex items-center gap-4">
-                                <h2 className="text-xs font-black uppercase tracking-[0.3em] text-slate-400">
-                                    {lang === 'en' ? 'Explore More' : 'थप अन्वेषण गर्नुहोस्'}
-                                </h2>
-                                <div className="h-[1px] bg-slate-200 dark:bg-slate-800 flex-grow"></div>
+                            <NewsSection title={lang === 'en' ? 'Politics' : 'राजनीति'} categorySlug="politics" limit={4} />
+
+                            <VideoGallery articles={articles} />
+
+                            <div className="flex justify-center w-full py-4 bg-slate-50 dark:bg-slate-900/30 rounded-2xl">
+                                <AdBanner position="home-middle" className="max-w-full h-auto" />
                             </div>
+
+                            <NewsSection title={lang === 'en' ? 'Tech' : 'प्रविधि'} categorySlug="tech" limit={4} variant="grid" />
+
                             <CategoryGrid />
                         </div>
-                    </div>
 
-                    {/* Sidebar Area */}
-                    <aside className="lg:col-span-1 space-y-8">
-                        <div className="bg-slate-100 dark:bg-slate-800/50 p-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
-                            <AdBanner position="sidebar-top" />
-                        </div>
-                        <TrendingSidebar />
-                        <div className="sticky top-32 space-y-8">
-                            <AdBanner position="sidebar-sticky" />
-                        </div>
-                    </aside>
-                </div>
+                        {/* RIGHT: Sidebar */}
+                        <aside className="lg:col-span-1 space-y-8 w-full">
+
+                            {/* Trending Section */}
+                            <TrendingSidebar />
+
+                            {/* 🚀 PRO WAITLIST CARD */}
+                            <section className="relative overflow-hidden p-6 bg-slate-900 dark:bg-amber-500 rounded-3xl shadow-xl">
+                                <div className="relative z-10 space-y-4">
+                                    <div className="flex items-center gap-2 text-amber-500 dark:text-slate-900">
+                                        <Sparkles size={20} />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Premium</span>
+                                    </div>
+                                    <h3 className="text-xl font-bold text-white dark:text-slate-950 leading-tight">
+                                        {lang === 'en' ? 'KhabarPoint Pro' : 'खबरप्वाइन्ट प्रो'}
+                                    </h3>
+                                    <button
+                                        onClick={handleProUpgrade}
+                                        className="w-full py-3 bg-white dark:bg-slate-950 text-slate-900 dark:text-white rounded-xl font-black text-xs uppercase tracking-tighter hover:scale-[1.02] transition-transform"
+                                    >
+                                        {lang === 'en' ? 'Join Waitlist' : 'सूचीमा सामेल हुनुहोस्'}
+                                    </button>
+                                </div>
+                                <div className="absolute -right-4 -bottom-4 text-white/5 dark:text-black/5 rotate-12">
+                                    <Sparkles size={120} />
+                                </div>
+                            </section>
+
+                            {/* 🚀 STICKY RESPONSIVE AD SECTION */}
+                            <div className="lg:sticky lg:top-24 space-y-6">
+                                <div className="group relative">
+                                    <div className="flex items-center justify-between mb-2 px-1">
+                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Advertisement</span>
+                                        <Info size={10} className="text-slate-300" />
+                                    </div>
+                                    <div className="p-2 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-900/20">
+                                        <AdBanner position="sidebar-sticky" className="w-full h-auto rounded-lg shadow-sm" />
+                                    </div>
+                                </div>
+
+                                {/* Micro Footer for Sidebar */}
+                                <div className="text-[10px] text-slate-400 font-medium px-2 leading-relaxed">
+                                    {lang === 'en' ? 'Ads help us keep the news free for everyone.' : 'विज्ञापनले हामीलाई समाचार निःशुल्क राख्न मद्दत गर्दछ।'}
+                                </div>
+                            </div>
+                        </aside>
+
+                    </div>
+                </main>
             </div>
         </div>
     );

@@ -1,40 +1,34 @@
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
+import { v2 as cloudinary } from 'cloudinary';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
 
-// 🚀 Auto-create directories
-const uploadDir = path.join(process.cwd(), 'uploads');
-const adsDir = path.join(uploadDir, 'ads');
-
-[uploadDir, adsDir].forEach(dir => {
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-        console.log(`📁 Created directory: ${dir}`);
-    }
+// 1. Configure Cloudinary
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        // You can check the route to separate article images from ad images
-        if (req.originalUrl.includes('ads')) {
-            cb(null, 'uploads/ads/');
-        } else {
-            cb(null, 'uploads/');
-        }
+// 2. Setup Cloudinary Storage with Dynamic Folders
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: async (req: any, file: any) => {
+        // Keeps your logic: Separate ads from standard uploads
+        const isAd = req.originalUrl.includes('ads');
+        return {
+            folder: isAd ? 'khabarpoint/ads' : 'khabarpoint/articles',
+            allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
+            public_id: Date.now() + '-' + Math.round(Math.random() * 1E9),
+        };
     },
-    filename: (req, file, cb) => {
-        // Cleaning the filename to prevent issues with spaces/special chars
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
-    }
 });
 
-// Create the multer instance
+// 3. Create the multer instance
 const upload = multer({
-    storage,
+    storage: storage,
     limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
 });
 
-// 🚀 THE FIX: Export both ways to satisfy your different route files
+// 🚀 Export both ways to maintain compatibility
 export { upload };
 export default upload;

@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import DOMPurify from 'dompurify';
 import { API } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { Calendar, Tag, ChevronLeft } from 'lucide-react';
+import { Calendar, ChevronLeft, Loader2 } from 'lucide-react';
 
 const ArticleDetail = () => {
     const { slug } = useParams();
@@ -17,16 +18,45 @@ const ArticleDetail = () => {
         }
     });
 
+    // 🚀 1. SMART CONTENT FALLBACK & SANITIZATION
+    const { title, content } = useMemo(() => {
+        if (!article) return { title: '', content: '' };
+
+        // Helper to check if string is truly empty or just HTML noise
+        const isActuallyEmpty = (str: string | undefined) => {
+            if (!str) return true;
+            return str.replace(/<[^>]*>?/gm, '').trim().length === 0;
+        };
+
+        // Determine title based on language presence
+        const activeTitle = lang === 'en'
+            ? (article.titleEn || article.titleNe)
+            : (article.titleNe || article.titleEn);
+
+        // Determine content body based on language presence
+        const rawContent = lang === 'en'
+            ? (isActuallyEmpty(article.contentEn) ? article.contentNe : article.contentEn)
+            : (isActuallyEmpty(article.contentNe) ? article.contentEn : article.contentNe);
+
+        return {
+            title: activeTitle,
+            content: DOMPurify.sanitize(rawContent || '', {
+                USE_PROFILES: { html: true },
+                ADD_ATTR: ['target', 'rel']
+            })
+        };
+    }, [article, lang]);
+
     // Update Browser Tab Title
     useEffect(() => {
-        if (article) {
-            document.title = `${lang === 'en' ? article.titleEn : article.titleNe} | KhabarPoint`;
+        if (title) {
+            document.title = `${title} | KhabarPoint`;
         }
-    }, [article, lang]);
+    }, [title]);
 
     if (isLoading) return (
         <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-            <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+            <Loader2 className="w-12 h-12 text-red-600 animate-spin" />
             <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Loading KhabarPoint News...</p>
         </div>
     );
@@ -38,7 +68,6 @@ const ArticleDetail = () => {
         </div>
     );
 
-    // Improved Image URL handling
     const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
     const imageUrl = article.image?.startsWith('http')
         ? article.image
@@ -63,8 +92,9 @@ const ArticleDetail = () => {
                 </div>
             </div>
 
-            <h1 className="text-3xl md:text-5xl font-black mb-8 leading-[1.1] tracking-tighter">
-                {lang === 'en' ? article.titleEn : article.titleNe}
+            {/* 🚀 Title with Nepali Line-Height Adjustment */}
+            <h1 className={`text-3xl md:text-5xl font-black mb-8 tracking-tighter ${lang === 'ne' ? 'leading-[1.3]' : 'leading-[1.1]'}`}>
+                {title}
             </h1>
 
             <div className="relative group overflow-hidden rounded-[32px] mb-10 shadow-2xl">
@@ -76,13 +106,15 @@ const ArticleDetail = () => {
                 />
             </div>
 
-            {/* Content Area */}
+            {/* 🚀 Content Area with Typography Fixes */}
             <div
-                className="prose prose-lg md:prose-xl dark:prose-invert max-w-none 
+                className={`prose prose-lg md:prose-xl dark:prose-invert max-w-none 
                 prose-headings:font-black prose-headings:tracking-tighter 
-                prose-p:leading-relaxed prose-p:text-slate-600 dark:prose-p:text-slate-300
-                prose-img:rounded-3xl"
-                dangerouslySetInnerHTML={{ __html: lang === 'en' ? article.contentEn : article.contentNe }}
+                prose-img:rounded-3xl prose-a:text-red-600
+                ${lang === 'ne'
+                        ? 'font-sans leading-[1.8] text-[1.15rem] prose-p:text-slate-800 dark:prose-p:text-slate-200'
+                        : 'prose-p:leading-relaxed prose-p:text-slate-600 dark:prose-p:text-slate-300'}`}
+                dangerouslySetInnerHTML={{ __html: content }}
             />
 
             <div className="mt-16 pt-8 border-t dark:border-slate-800">
@@ -90,7 +122,7 @@ const ArticleDetail = () => {
                     onClick={() => window.history.back()}
                     className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-red-600 transition-colors"
                 >
-                    <ChevronLeft size={16} /> {t('Go Back', 'पछाडि जानुहोस्')}
+                    <ChevronLeft size={16} /> {lang === 'en' ? 'Go Back' : 'पछाडि जानुहोस्'}
                 </button>
             </div>
         </article>

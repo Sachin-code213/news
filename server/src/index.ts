@@ -7,6 +7,7 @@ import path from 'path';
 import hpp from 'hpp';
 import dns from 'node:dns';
 import bcrypt from 'bcryptjs';
+import fs from 'fs'; // Required for meta-injection
 
 // Models & Config
 import './models/Category';
@@ -90,12 +91,11 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 // --- 2. STATIC ASSETS ---
-// Use path.join for cross-platform compatibility
 const uploadsPath = path.join(__dirname, '../uploads');
 app.use('/uploads', express.static(uploadsPath));
 
 // --- 3. API ROUTES ---
-app.use('/api/seo', seoRoutes); // Added prefix for clarity
+app.use('/api/seo', seoRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/articles', articleRoutes);
@@ -144,12 +144,57 @@ app.get('/api/seed-categories-securely', async (req: Request, res: Response) => 
     }
 });
 
-// --- 5. FRONTEND SERVING ---
+// --- 5. FRONTEND SERVING WITH META-INJECTION ---
 const clientPath = path.join(__dirname, '../../client/dist');
+const indexPath = path.join(clientPath, 'index.html');
+
+/**
+ * 🚀 DYNAMIC META-INJECTOR FOR SOCIAL SHARING
+ * Intercepts article routes to serve SEO-friendly HTML to crawlers
+ */
+app.get('/article/:id', async (req: Request, res: Response) => {
+    try {
+        const article = await Article.findById(req.params.id);
+
+        if (!article) {
+            return res.sendFile(indexPath);
+        }
+
+        fs.readFile(indexPath, 'utf8', (err, htmlData) => {
+            if (err) return res.sendFile(indexPath);
+
+            // Data Preparation
+            const title = article.titleEn || article.titleNe || "KhabarPoint News";
+            const description = (article.excerptEn || article.excerptNe || "Stay updated with KhabarPoint").substring(0, 160);
+
+            // Ensure Absolute Image URL for Social Bots
+            const baseUrl = process.env.API_URL || 'https://khabarpoint.onrender.com';
+            const imageUrl = article.image?.startsWith('http')
+                ? article.image
+                : `${baseUrl}${article.image?.startsWith('/') ? '' : '/'}${article.image}`;
+
+            // Inject Meta Tags via string replacement
+            let modifiedHtml = htmlData
+                .replace(/<title>.*?<\/title>/, `<title>${title} | KhabarPoint</title>`)
+                .replace(/property="og:title" content=".*?"/g, `property="og:title" content="${title}"`)
+                .replace(/property="og:description" content=".*?"/g, `property="og:description" content="${description}"`)
+                .replace(/property="og:image" content=".*?"/g, `property="og:image" content="${imageUrl}"`)
+                .replace(/property="og:url" content=".*?"/g, `property="og:url" content="${baseUrl}/article/${req.params.id}"`)
+                .replace(/name="description" content=".*?"/g, `name="description" content="${description}"`);
+
+            return res.send(modifiedHtml);
+        });
+    } catch (error) {
+        res.sendFile(indexPath);
+    }
+});
+
+// Static assets serving
 app.use(express.static(clientPath));
-// Replace the old app.get('*', ...) or app.get('/:any*', ...) with this:
+
+// Standard Frontend Catch-all (for Home, About, etc.)
 app.get(/^(?!\/api).+/, (req: Request, res: Response) => {
-    res.sendFile(path.join(clientPath, 'index.html'), (err) => {
+    res.sendFile(indexPath, (err) => {
         if (err) {
             res.status(404).send('Frontend not built or index.html missing');
         }

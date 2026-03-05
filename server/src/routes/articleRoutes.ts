@@ -4,7 +4,7 @@ import {
     updateArticle,
     getArticles,
     getArticleBySlug,
-    getArticleById, // 🚀 1. MUST BE IMPORTED HERE
+    getArticleById,
     deleteArticle,
     searchArticles,
     incrementArticleViews,
@@ -30,17 +30,27 @@ router.get('/slug/:slug', getArticleBySlug);
  */
 router.get('/admin/stats', protect, admin, getAdminStats);
 
-// 🚀 2. THE ID ROUTE: This handles the 404 error in your ArticleEditor.tsx
-// It must come BEFORE the generic slug route if you don't use the '/slug/' prefix
+// 🚀 THE ID ROUTE: Remains before generic slug routes to avoid conflicts
 router.get('/:id', getArticleById);
 
+/**
+ * ☁️ CLOUDINARY UPLOAD HANDLER
+ * This stays compatible with your controllers while using the new Cloudinary engine.
+ */
 const handleUpload = (req: any, res: any, next: any) => {
+    // 'image' matches the field name from your frontend form/Postman
     upload.single('image')(req, res, (err: any) => {
-        if (err) return res.status(400).json({ success: false, message: "Image upload error: " + err.message });
+        if (err) {
+            return res.status(400).json({
+                success: false,
+                message: "Cloudinary Upload Error: " + err.message
+            });
+        }
         next();
     });
 };
 
+// Admin CRUD Operations
 router.post('/', protect, admin, handleUpload, createArticle);
 router.put('/:id', protect, admin, handleUpload, updateArticle);
 router.delete('/:id', protect, admin, deleteArticle);

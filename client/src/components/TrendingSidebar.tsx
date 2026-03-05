@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { Skeleton } from './ui/skeleton';
-import { TrendingUp, Eye, ChevronRight } from 'lucide-react';
+import { TrendingUp, Eye } from 'lucide-react';
 import { API } from '../context/AuthContext';
 import ProCard from './ui/ProCard';
 
@@ -31,9 +31,11 @@ const TrendingSidebar: React.FC = () => {
     });
 
     return (
-        <div className="space-y-8">
+        /* 🚀 Changed to 'flex flex-col' to ensure child elements stack correctly on resize */
+        <div className="flex flex-col space-y-8 w-full">
+
             {/* --- SECTION 1: TRENDING LIST --- */}
-            <div className="bg-white dark:bg-slate-900 rounded-[32px] p-6 border border-slate-100 dark:border-slate-800 shadow-sm transition-all duration-300">
+            <div className="bg-white dark:bg-slate-900 rounded-[32px] p-6 border border-slate-100 dark:border-slate-800 shadow-sm transition-all duration-300 w-full">
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
                         <div className="p-2.5 bg-red-600 rounded-2xl shadow-lg shadow-red-600/20">
@@ -105,8 +107,9 @@ const TrendingSidebar: React.FC = () => {
             </div>
 
             {/* --- SECTION 2: PRO UPGRADE TEASER --- */}
-            {/* 🚀 Added 'z-50' and 'pointer-events-auto' to ensure the button is clickable */}
-            <div className="sticky top-24 z-50 pointer-events-auto">
+            {/* 🚀 FIXED: Removed absolute 'sticky' which was hiding the component on small screens. 
+                Now it only sticks on desktop screens (lg:sticky). */}
+            <div className="lg:sticky lg:top-24 w-full z-10 block transition-all">
                 <ProCard />
             </div>
         </div>

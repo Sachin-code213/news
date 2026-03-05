@@ -27,39 +27,35 @@ const NewsTicker: React.FC = () => {
     if (!news || news.length === 0) return null;
 
     return (
-        <div className="bg-white dark:bg-slate-900 border-y border-slate-100 dark:border-slate-800 flex items-center overflow-hidden h-12 relative stop-on-hover">
+        /* 📱 MAIN CONTAINER: overflow-hidden and w-full are mandatory to stop page cutoff */
+        <div className="bg-white dark:bg-slate-950 border-y border-slate-100 dark:border-slate-800 flex items-center overflow-hidden h-10 md:h-12 relative w-full group">
 
-            {/* 🚩 STATIC LABEL - Higher Z-index ensures text goes UNDER it */}
-            <div className="bg-red-600 text-white px-4 h-full flex items-center gap-2 z-50 shadow-xl shrink-0">
+            {/* 🚩 STATIC LABEL: Stays fixed while text rolls behind it */}
+            <div className="bg-red-600 text-white px-3 md:px-5 h-full flex items-center gap-2 z-30 shadow-[10px_0_15px_rgba(0,0,0,0.1)] shrink-0">
                 <Zap size={14} className="fill-white animate-pulse" />
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap">
+                <span className="text-[10px] md:text-xs font-black uppercase tracking-widest whitespace-nowrap">
                     {lang === 'en' ? 'Breaking News' : 'ताजा समाचार'}
                 </span>
             </div>
 
-            {/* 🏃‍♂️ THE FAST TRACK */}
-            {/* We use w-[200%] so the animation has 2 pages of content to loop through */}
-            <div className="flex w-[200%] shrink-0 animate-ticker-right">
+            {/* 🏃‍♂️ THE TRACK: Uses 'flex-nowrap' and 'w-max' to ensure no overlapping */}
+            <div className="flex flex-nowrap w-max animate-ticker-right group-hover:[animation-play-state:paused] h-full items-center">
 
-                {/* 🔄 Set 1 */}
-                <div className="flex items-center justify-around w-1/2 gap-12 px-6">
-                    {news.map((item: Article) => (
-                        <Link key={`${item._id}-a`} to={`/article/${item.slug}`} className="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-300 hover:text-red-600 whitespace-nowrap">
-                            <span className="text-red-600">•</span>
-                            {lang === 'en' ? item.titleEn : item.titleNe}
-                        </Link>
-                    ))}
-                </div>
-
-                {/* 🔄 Set 2 (The Loop Filler) */}
-                <div className="flex items-center justify-around w-1/2 gap-12 px-6" aria-hidden="true">
-                    {news.map((item: Article) => (
-                        <Link key={`${item._id}-b`} to={`/article/${item.slug}`} className="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-300 hover:text-red-600 whitespace-nowrap">
-                            <span className="text-red-600">•</span>
-                            {lang === 'en' ? item.titleEn : item.titleNe}
-                        </Link>
-                    ))}
-                </div>
+                {/* 🔄 Render Function to ensure exact duplication for the infinite loop */}
+                {[1, 2].map((loop) => (
+                    <div key={loop} className="flex items-center shrink-0 gap-8 md:gap-16 px-4 md:px-8">
+                        {news.map((item: Article) => (
+                            <Link
+                                key={`${item._id}-${loop}`}
+                                to={`/article/${item.slug}`}
+                                className="flex items-center gap-3 text-[11px] md:text-sm font-bold text-slate-800 dark:text-slate-200 hover:text-red-600 transition-colors whitespace-nowrap shrink-0"
+                            >
+                                <span className="text-red-600 text-lg">•</span>
+                                {lang === 'en' ? item.titleEn : item.titleNe}
+                            </Link>
+                        ))}
+                    </div>
+                ))}
             </div>
         </div>
     );

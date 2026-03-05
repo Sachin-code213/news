@@ -29,31 +29,24 @@ const ArticleEditor: React.FC = () => {
     const [isLive, setIsLive] = useState(false);
     const [image, setImage] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-
     const [type, setType] = useState<'text' | 'video'>('text');
     const [videoUrl, setVideoUrl] = useState('');
 
-    // 🚀 NEW: YouTube Metadata Fetcher
+    // YouTube Metadata Fetcher
     const handleFetchYoutubeDetails = async () => {
         if (!videoUrl) return toast.warning("Please paste a YouTube URL first");
-
         try {
             const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
             const match = videoUrl.match(regExp);
             const videoId = (match && match[2].length === 11) ? match[2] : null;
-
             if (!videoId) return toast.error("Invalid YouTube URL");
 
-            // Fetch Title via oEmbed
             const response = await fetch(`https://www.youtube.com/oembed?url=${videoUrl}&format=json`);
             const data = await response.json();
-
             if (data.title) setTitleEn(data.title);
 
-            // Set High-Res Thumbnail
             const highResThumb = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
             setPreviewUrl(highResThumb);
-
             toast.success("Details fetched from YouTube!");
         } catch (error) {
             toast.error("Could not fetch video details automatically");
@@ -113,26 +106,29 @@ const ArticleEditor: React.FC = () => {
         e.preventDefault();
         if (!category) return toast.warning("Please select a valid Category");
 
+        // 🚀 DATA FIX: Prevents empty tags like <p><br></p> from being saved as "content"
+        const cleanHtml = (html: string) => {
+            if (!html) return "";
+            const textOnly = html.replace(/<[^>]*>?/gm, '').trim();
+            return textOnly.length === 0 ? "" : html;
+        };
+
         const fd = new FormData();
-        fd.append('titleEn', titleEn);
-        fd.append('titleNe', titleNe);
-        fd.append('excerptEn', excerptEn);
-        fd.append('excerptNe', excerptNe);
-        fd.append('contentEn', contentEn);
-        fd.append('contentNe', contentNe);
+        fd.append('titleEn', titleEn.trim());
+        fd.append('titleNe', titleNe.trim());
+        fd.append('excerptEn', excerptEn.trim());
+        fd.append('excerptNe', excerptNe.trim());
+        fd.append('contentEn', cleanHtml(contentEn));
+        fd.append('contentNe', cleanHtml(contentNe));
         fd.append('category', category);
         fd.append('isBreaking', String(isBreaking));
         fd.append('isLive', String(isLive));
         fd.append('type', type);
         fd.append('videoUrl', videoUrl);
 
-        // 🚀 THE FIX: 
-        // If there is a manual file upload, use it.
-        // If NO file but there IS a YouTube thumbnail URL, send that URL as the 'image' field.
         if (image) {
             fd.append('image', image);
-        } else if (previewUrl && (previewUrl.startsWith('http') || previewUrl.startsWith('https'))) {
-            // We send the URL string in the SAME field 'image' that Multer expects
+        } else if (previewUrl && (previewUrl.startsWith('http'))) {
             fd.append('image', previewUrl);
         }
 
@@ -154,7 +150,7 @@ const ArticleEditor: React.FC = () => {
                         <FileText className="text-red-600 h-6 w-6" /> {isNew ? 'New Entry' : 'Update Content'}
                     </h1>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1 mt-1">
-                        <Globe size={10} className="text-slate-400" /> Editor Mode: <span className="text-red-600 font-black">{lang === 'en' ? 'English' : 'Nepali'}</span>
+                        <Globe size={10} className="text-slate-400" /> Editor Mode: <span className="text-red-600 font-black">{lang === 'en' ? 'ENGLISH' : 'NEPALI'}</span>
                     </p>
                 </div>
                 <div className="flex gap-3">
@@ -178,23 +174,18 @@ const ArticleEditor: React.FC = () => {
                         </div>
                     </Card>
 
-                    {/* YouTube Config with Magic Fetch */}
                     {type === 'video' && (
                         <Card className="dark:bg-slate-900 border-red-200 dark:border-red-900 shadow-lg animate-in slide-in-from-top-3">
                             <CardHeader className="bg-red-50 dark:bg-red-950/20 py-3 flex flex-row items-center justify-between">
-                                <CardTitle className="text-[10px] font-black uppercase tracking-widest text-red-600">YouTube Video Configuration</CardTitle>
-                                <Button
-                                    type="button"
-                                    onClick={handleFetchYoutubeDetails}
-                                    className="h-8 bg-white dark:bg-slate-800 text-red-600 border border-red-200 hover:bg-red-50 text-[9px] font-black px-4 rounded-full gap-2 shadow-sm"
-                                >
-                                    <Sparkles size={12} /> Auto-Fetch Details
+                                <CardTitle className="text-[10px] font-black uppercase tracking-widest text-red-600">YouTube Configuration</CardTitle>
+                                <Button type="button" onClick={handleFetchYoutubeDetails} className="h-8 bg-white dark:bg-slate-800 text-red-600 border border-red-200 hover:bg-red-50 text-[9px] font-black px-4 rounded-full gap-2 shadow-sm">
+                                    <Sparkles size={12} /> Auto-Fetch
                                 </Button>
                             </CardHeader>
                             <CardContent className="pt-6">
                                 <div className="space-y-2">
-                                    <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Paste YouTube Link</label>
-                                    <Input type="url" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." className="dark:bg-slate-800 border-red-100 focus:ring-red-600 font-bold h-11" />
+                                    <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">YouTube Link</label>
+                                    <Input type="url" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://..." className="dark:bg-slate-800 border-red-100 focus:ring-red-600 font-bold h-11" />
                                 </div>
                             </CardContent>
                         </Card>
@@ -208,7 +199,7 @@ const ArticleEditor: React.FC = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">English Title</label>
-                                    <Input value={titleEn} onChange={(e) => setTitleEn(e.target.value)} placeholder="Headline..." required className="dark:bg-slate-800 border-slate-100 dark:border-slate-700 font-bold rounded-xl h-11" />
+                                    <Input value={titleEn} onChange={(e) => setTitleEn(e.target.value)} placeholder="Headline..." className="dark:bg-slate-800 border-slate-100 dark:border-slate-700 font-bold rounded-xl h-11" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Nepali Title</label>
@@ -223,11 +214,17 @@ const ArticleEditor: React.FC = () => {
                     </Card>
 
                     <Card className="dark:bg-slate-900 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden border-slate-100">
-                        <CardHeader className="bg-slate-50/50 dark:bg-slate-800/50 border-b dark:border-slate-800 py-3">
+                        <CardHeader className="bg-slate-50/50 dark:bg-slate-800/50 border-b dark:border-slate-800 py-3 flex flex-row items-center justify-between">
                             <CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-400">Article Body</CardTitle>
+                            <span className="text-[9px] font-black text-red-600 bg-red-50 px-2 py-0.5 rounded">Editing: {lang === 'en' ? 'English' : 'Nepali'}</span>
                         </CardHeader>
                         <CardContent className="pt-6">
-                            <RichTextEditor content={lang === 'en' ? contentEn : contentNe} onChange={lang === 'en' ? setContentEn : setContentNe} />
+                            {/* Key added to force refresh when switching languages */}
+                            <RichTextEditor
+                                key={lang}
+                                content={lang === 'en' ? contentEn : contentNe}
+                                onChange={lang === 'en' ? setContentEn : setContentNe}
+                            />
                         </CardContent>
                     </Card>
                 </div>
@@ -256,15 +253,9 @@ const ArticleEditor: React.FC = () => {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Select Category</label>
+                                <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Category</label>
                                 <select className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl text-[11px] font-black outline-none focus:ring-2 focus:ring-red-600 cursor-pointer" value={category} onChange={(e) => setCategory(e.target.value)} required>
-                                    <option value="">Choose News Section</option>
-                                    <option value="politics">Politics / राजनीति</option>
-                                    <option value="nepal">Nepal / नेपाल</option>
-                                    <option value="business">Business / व्यापार</option>
-                                    <option value="tech">Tech / प्रविधि</option>
-                                    <option value="sports">Sports / खेलकुद</option>
-                                    <option value="entertainment">Entertainment / मनोरञ्जन</option>
+                                    <option value="">Choose Section</option>
                                     {dbCategories.map((cat: any) => (
                                         <option key={cat._id} value={cat._id}>{lang === 'en' ? cat.nameEn : cat.nameNe}</option>
                                     ))}
