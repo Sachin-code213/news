@@ -61,7 +61,7 @@ app.use(cors({
 
 app.use(helmet({
     crossOriginResourcePolicy: false,
-    contentSecurityPolicy: false // Required for meta-injection to work correctly with external images
+    contentSecurityPolicy: false
 }));
 
 app.use(express.json({ limit: '10mb' }));
@@ -141,15 +141,10 @@ app.get('/api/seed-categories-securely', async (req: Request, res: Response) => 
 const clientPath = path.join(__dirname, '../../client/dist');
 const indexPath = path.join(clientPath, 'index.html');
 
-/**
- * 🚀 DYNAMIC NEWS INJECTOR
- * Optimized for Facebook, WhatsApp, LinkedIn, and X (Twitter)
- */
 app.get('/article/:slug', async (req: Request, res: Response) => {
     try {
         const article = await Article.findOne({ slug: req.params.slug });
 
-        // If article doesn't exist, fall back to standard React index
         if (!article) {
             return res.sendFile(indexPath);
         }
@@ -157,11 +152,9 @@ app.get('/article/:slug', async (req: Request, res: Response) => {
         fs.readFile(indexPath, 'utf8', (err, htmlData) => {
             if (err) return res.sendFile(indexPath);
 
-            // 1. Data Preparation
             const title = `${article.titleNe || article.titleEn} | KhabarPoint`;
             const description = (article.summaryNe || article.summaryEn || article.excerptEn || "Stay updated with KhabarPoint").substring(0, 160);
 
-            // 2. Image Optimization (Cloudinary auto-format & social-friendly sizing)
             const imageUrl = article.image?.includes('cloudinary')
                 ? article.image.replace('/upload/', '/upload/w_1200,h_630,c_fill,q_auto,f_jpg/')
                 : article.image;
@@ -169,20 +162,15 @@ app.get('/article/:slug', async (req: Request, res: Response) => {
             const siteUrl = process.env.CLIENT_URL || 'https://khabarpoint.vercel.app';
             const fullUrl = `${siteUrl}/article/${req.params.slug}`;
 
-            // 3. Dynamic Injection using Global Regex
-            // This replaces the placeholder values in your index.html with real news data
             let modifiedHtml = htmlData
                 .replace(/<title>.*?<\/title>/, `<title>${title}</title>`)
-                // Replaces <meta property="og:title" content="..."> etc.
                 .replace(/(property="og:title"\s+content=").*?(")/, `$1${title}$2`)
                 .replace(/(property="og:description"\s+content=").*?(")/, `$1${description}$2`)
                 .replace(/(property="og:image"\s+content=").*?(")/, `$1${imageUrl}$2`)
                 .replace(/(property="og:url"\s+content=").*?(")/, `$1${fullUrl}$2`)
-                // Replaces <meta property="twitter:title" content="..."> etc.
                 .replace(/(property="twitter:title"\s+content=").*?(")/, `$1${title}$2`)
                 .replace(/(property="twitter:description"\s+content=").*?(")/, `$1${description}$2`)
                 .replace(/(property="twitter:image"\s+content=").*?(")/, `$1${imageUrl}$2`)
-                // Replaces standard description
                 .replace(/(name="description"\s+content=").*?(")/, `$1${description}$2`);
 
             return res.send(modifiedHtml);
@@ -193,23 +181,17 @@ app.get('/article/:slug', async (req: Request, res: Response) => {
     }
 });
 
-// Serve frontend static files AFTER the dynamic route
 app.use(express.static(clientPath));
 
-// Standard Frontend Catch-all
-app.get('/:any*', (req: Request, res: Response) => {
+// --- 6. FINAL CATCH-ALL & ERROR HANDLING ---
+
+// ✅ FIXED: Use a proper regex catch-all that ignores API routes.
+// This is the only "catch-all" you need.
+app.get(/^(?!\/api).+/, (req: Request, res: Response) => {
     res.sendFile(indexPath);
 });
 
-// --- 6. ERROR HANDLING ---
 app.use(errorHandler);
-app.get('/*', (req: Request, res: Response) => {
-    // If the request is for an API but reached here, it's a 404
-    if (req.path.startsWith('/api')) {
-        return res.status(404).json({ message: "API route not found" });
-    }
-    res.sendFile(indexPath);
-});
 
 // --- 7. SERVER INITIALIZATION ---
 const startServer = async () => {
