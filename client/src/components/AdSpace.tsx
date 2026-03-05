@@ -4,7 +4,6 @@ import axios from 'axios';
 
 interface AdSpaceProps {
     position: 'top-leaderboard' | 'home-middle' | 'sidebar-top' | 'sidebar-sticky' | 'sidebar' | 'top-banner' | 'in-article';
-    // 🚀 FIXED: Added className to the interface
     className?: string;
 }
 
@@ -19,9 +18,7 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position, className = "" }) => {
                 const { data } = await axios.get(`${baseUrl}/api/ads`, {
                     params: { position: position }
                 });
-
                 const adData = data?.data || data;
-
                 if (Array.isArray(adData)) {
                     return adData.length > 0 ? adData[0] : null;
                 }
@@ -33,15 +30,14 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position, className = "" }) => {
         }
     });
 
-    if (isLoading || !ad || !ad.isActive) {
-        return null;
-    }
+    if (isLoading || !ad || !ad.isActive) return null;
 
     const getLayoutClasses = () => {
         let baseClasses = "";
         switch (position) {
             case 'top-leaderboard':
-                baseClasses = "w-full h-24 md:h-32 mb-4";
+                // Changed from fixed h-24 to h-auto to prevent "tiny" ads on mobile
+                baseClasses = "w-full h-auto min-h-[90px] mb-4";
                 break;
             case 'sidebar-top':
             case 'sidebar-sticky':
@@ -55,18 +51,18 @@ const AdSpace: React.FC<AdSpaceProps> = ({ position, className = "" }) => {
             default:
                 baseClasses = "w-full h-auto";
         }
-        // 🚀 Combine internal classes with the custom 'className' prop
         return `${baseClasses} ${className}`;
     };
 
     return (
         <div className={`overflow-hidden rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 transition-all ${getLayoutClasses()}`}>
             <a href={ad.link} target="_blank" rel="noopener noreferrer" className="block h-full group">
-                <div className="relative h-full w-full">
+                <div className="relative flex items-center justify-center w-full h-full min-h-[100px] bg-slate-100 dark:bg-slate-800/50">
                     <img
                         src={ad.imageUrl.startsWith('http') ? ad.imageUrl : `${baseUrl}${ad.imageUrl}`}
                         alt={ad.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        // ✅ object-contain ensures visibility, group-hover handles the effect
+                        className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-black/5 group-hover:bg-transparent transition-colors" />
                 </div>

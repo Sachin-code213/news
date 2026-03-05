@@ -7,7 +7,7 @@ import path from 'path';
 import hpp from 'hpp';
 import dns from 'node:dns';
 import bcrypt from 'bcryptjs';
-import fs from 'fs'; // Required for meta-injection
+import fs from 'fs';
 
 // Models & Config
 import './models/Category';
@@ -41,7 +41,6 @@ const app: Express = express();
 const PORT = process.env.PORT || 10000;
 
 // --- 1. GLOBAL MIDDLEWARE ---
-
 const allowedOrigins = [
     process.env.CLIENT_URL,
     'http://localhost:5173',
@@ -114,12 +113,10 @@ app.get('/api/seed-categories-securely', async (req: Request, res: Response) => 
     if (process.env.NODE_ENV === 'production' && seedKey !== process.env.ADMIN_SEED_KEY) {
         return res.status(403).json({ success: false, message: "Unauthorized access" });
     }
-
     try {
         await Article.deleteMany({});
         await Category.deleteMany({});
         await User.deleteMany({ email: 'admin@khabarpoint.com' });
-
         const categories = [
             { nameEn: 'Nepal', nameNe: 'नेपाल', slug: 'nepal' },
             { nameEn: 'Politics', nameNe: 'राजनीति', slug: 'politics' },
@@ -129,7 +126,6 @@ app.get('/api/seed-categories-securely', async (req: Request, res: Response) => 
             { nameEn: 'Entertainment', nameNe: 'मनोरञ्जन', slug: 'entertainment' }
         ];
         await Category.insertMany(categories);
-
         const hashedPassword = await bcrypt.hash('1000021133', 10);
         await User.create({
             name: 'System Admin',
@@ -137,24 +133,25 @@ app.get('/api/seed-categories-securely', async (req: Request, res: Response) => 
             password: hashedPassword,
             role: 'admin'
         });
-
         res.json({ success: true, message: "✅ Database Cleared & Admin Created!" });
     } catch (err: any) {
         res.status(500).json({ success: false, message: err.message });
     }
 });
 
-// --- 5. FRONTEND SERVING WITH META-INJECTION ---
+// --- 5. FRONTEND SERVING WITH UNIVERSAL META-INJECTION ---
 const clientPath = path.join(__dirname, '../../client/dist');
 const indexPath = path.join(clientPath, 'index.html');
 
 /**
- * 🚀 DYNAMIC META-INJECTOR FOR SOCIAL SHARING
- * Intercepts article routes to serve SEO-friendly HTML to crawlers
+ * 🚀 UNIVERSAL META-INJECTOR
+ * Fixes thumbnails for Facebook, WhatsApp, LinkedIn, and Twitter
+ * Intercepts /article/:slug to serve meta tags to bots
  */
-app.get('/article/:id', async (req: Request, res: Response) => {
+app.get('/article/:slug', async (req: Request, res: Response) => {
     try {
-        const article = await Article.findById(req.params.id);
+        // Find article by slug (matching Vercel URL)
+        const article = await Article.findOne({ slug: req.params.slug });
 
         if (!article) {
             return res.sendFile(indexPath);
@@ -163,24 +160,33 @@ app.get('/article/:id', async (req: Request, res: Response) => {
         fs.readFile(indexPath, 'utf8', (err, htmlData) => {
             if (err) return res.sendFile(indexPath);
 
-            // Data Preparation
+            // 1. Prepare SEO Content
             const title = article.titleEn || article.titleNe || "KhabarPoint News";
-            const description = (article.excerptEn || article.excerptNe || "Stay updated with KhabarPoint").substring(0, 160);
+            const description = (article.summaryEn || article.summaryNe || "Stay updated with KhabarPoint").substring(0, 160);
 
-            // Ensure Absolute Image URL for Social Bots
-            const baseUrl = process.env.API_URL || 'https://khabarpoint.onrender.com';
-            const imageUrl = article.image?.startsWith('http')
-                ? article.image
-                : `${baseUrl}${article.image?.startsWith('/') ? '' : '/'}${article.image}`;
+            // 2. Format Image for Social Media (Cloudinary transformation for WhatsApp/Mobile <300KB)
+            const imageUrl = article.image?.includes('cloudinary')
+                ? article.image.replace('/upload/', '/upload/w_600,h_315,c_fill,q_auto,f_jpg/')
+                : article.image;
 
-            // Inject Meta Tags via string replacement
+            const siteUrl = process.env.CLIENT_URL || 'https://khabarpoint.vercel.app';
+
+            // 3. Inject Meta Tags via string replacement
             let modifiedHtml = htmlData
                 .replace(/<title>.*?<\/title>/, `<title>${title} | KhabarPoint</title>`)
                 .replace(/property="og:title" content=".*?"/g, `property="og:title" content="${title}"`)
                 .replace(/property="og:description" content=".*?"/g, `property="og:description" content="${description}"`)
                 .replace(/property="og:image" content=".*?"/g, `property="og:image" content="${imageUrl}"`)
-                .replace(/property="og:url" content=".*?"/g, `property="og:url" content="${baseUrl}/article/${req.params.id}"`)
+                .replace(/property="og:url" content=".*?"/g, `property="og:url" content="${siteUrl}/article/${req.params.slug}"`)
                 .replace(/name="description" content=".*?"/g, `name="description" content="${description}"`);
+
+            // Add extra tags for WhatsApp/Twitter/Google if missing
+            if (!modifiedHtml.includes('twitter:card')) {
+                modifiedHtml = modifiedHtml.replace('</head>',
+                    `<meta name="twitter:card" content="summary_large_image">
+                     <meta itemprop="image" content="${imageUrl}">
+                     </head>`);
+            }
 
             return res.send(modifiedHtml);
         });

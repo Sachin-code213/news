@@ -1,6 +1,10 @@
 {
     "rewrites": [
         {
+            "source": "/article/:slug",
+            "destination": "https://khabarpoint.onrender.com/article/:slug"
+        },
+        {
             "source": "/(.*)",
             "destination": "/index.html"
         }
