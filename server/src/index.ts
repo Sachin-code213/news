@@ -137,10 +137,16 @@ app.get('/api/seed-categories-securely', async (req: Request, res: Response) => 
     }
 });
 
+
+
 // --- 5. FRONTEND SERVING WITH UNIVERSAL META-INJECTION ---
 const clientPath = path.join(__dirname, '../../client/dist');
 const indexPath = path.join(clientPath, 'index.html');
 
+/**
+ * 🚀 DYNAMIC NEWS INJECTOR
+ * This handles /article/:slug and ensures social media bots see the news, not the logo.
+ */
 app.get('/article/:slug', async (req: Request, res: Response) => {
     try {
         const article = await Article.findOne({ slug: req.params.slug });
@@ -152,9 +158,11 @@ app.get('/article/:slug', async (req: Request, res: Response) => {
         fs.readFile(indexPath, 'utf8', (err, htmlData) => {
             if (err) return res.sendFile(indexPath);
 
+            // 1. Prepare Content
             const title = `${article.titleNe || article.titleEn} | KhabarPoint`;
             const description = (article.summaryNe || article.summaryEn || article.excerptEn || "Stay updated with KhabarPoint").substring(0, 160);
 
+            // 2. Image Optimization (1200x630 is the gold standard for social media)
             const imageUrl = article.image?.includes('cloudinary')
                 ? article.image.replace('/upload/', '/upload/w_1200,h_630,c_fill,q_auto,f_jpg/')
                 : article.image;
@@ -162,16 +170,24 @@ app.get('/article/:slug', async (req: Request, res: Response) => {
             const siteUrl = process.env.CLIENT_URL || 'https://khabarpoint.vercel.app';
             const fullUrl = `${siteUrl}/article/${req.params.slug}`;
 
+            // 3. Injecting into your specific index.html layout
+            // We use 'g' (global) and 'i' (case-insensitive) to ensure all tags are replaced
             let modifiedHtml = htmlData
-                .replace(/<title>.*?<\/title>/, `<title>${title}</title>`)
-                .replace(/(property="og:title"\s+content=").*?(")/, `$1${title}$2`)
-                .replace(/(property="og:description"\s+content=").*?(")/, `$1${description}$2`)
-                .replace(/(property="og:image"\s+content=").*?(")/, `$1${imageUrl}$2`)
-                .replace(/(property="og:url"\s+content=").*?(")/, `$1${fullUrl}$2`)
-                .replace(/(property="twitter:title"\s+content=").*?(")/, `$1${title}$2`)
-                .replace(/(property="twitter:description"\s+content=").*?(")/, `$1${description}$2`)
-                .replace(/(property="twitter:image"\s+content=").*?(")/, `$1${imageUrl}$2`)
-                .replace(/(name="description"\s+content=").*?(")/, `$1${description}$2`);
+                .replace(/<title>.*?<\/title>/i, `<title>${title}</title>`)
+                .replace(/<meta name="title" content=".*?"/i, `<meta name="title" content="${title}"`)
+                .replace(/<meta name="description" content=".*?"/i, `<meta name="description" content="${description}"`)
+
+                // OpenGraph Tags
+                .replace(/property="og:title" content=".*?"/gi, `property="og:title" content="${title}"`)
+                .replace(/property="og:description" content=".*?"/gi, `property="og:description" content="${description}"`)
+                .replace(/property="og:image" content=".*?"/gi, `property="og:image" content="${imageUrl}"`)
+                .replace(/property="og:url" content=".*?"/gi, `property="og:url" content="${fullUrl}"`)
+
+                // Twitter Tags
+                .replace(/property="twitter:title" content=".*?"/gi, `property="twitter:title" content="${title}"`)
+                .replace(/property="twitter:description" content=".*?"/gi, `property="twitter:description" content="${description}"`)
+                .replace(/property="twitter:image" content=".*?"/gi, `property="twitter:image" content="${imageUrl}"`)
+                .replace(/property="twitter:url" content=".*?"/gi, `property="twitter:url" content="${fullUrl}"`);
 
             return res.send(modifiedHtml);
         });
@@ -181,12 +197,10 @@ app.get('/article/:slug', async (req: Request, res: Response) => {
     }
 });
 
+// Serve static files AFTER the dynamic route
 app.use(express.static(clientPath));
 
-// --- 6. FINAL CATCH-ALL & ERROR HANDLING ---
-
-// ✅ FIXED: Use a proper regex catch-all that ignores API routes.
-// This is the only "catch-all" you need.
+// --- 6. FINAL CATCH-ALL ---
 app.get(/^(?!\/api).+/, (req: Request, res: Response) => {
     res.sendFile(indexPath);
 });

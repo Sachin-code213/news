@@ -17,7 +17,7 @@ const storage = new CloudinaryStorage({
         const isAd = req.originalUrl.includes('ads');
         return {
             folder: isAd ? 'khabarpoint/ads' : 'khabarpoint/articles',
-            allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
+            allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'avif'],
             public_id: Date.now() + '-' + Math.round(Math.random() * 1E9),
         };
     },
