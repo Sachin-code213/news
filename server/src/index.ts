@@ -197,7 +197,7 @@ app.get('/article/:slug', async (req: Request, res: Response) => {
 app.use(express.static(clientPath));
 
 // Standard Frontend Catch-all
-app.get('/*', (req: Request, res: Response) => {
+app.get('/:any*', (req: Request, res: Response) => {
     res.sendFile(indexPath);
 });
 
