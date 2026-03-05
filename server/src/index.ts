@@ -197,12 +197,19 @@ app.get('/article/:slug', async (req: Request, res: Response) => {
 app.use(express.static(clientPath));
 
 // Standard Frontend Catch-all
-app.get('*', (req: Request, res: Response) => {
+app.get('/*', (req: Request, res: Response) => {
     res.sendFile(indexPath);
 });
 
 // --- 6. ERROR HANDLING ---
 app.use(errorHandler);
+app.get('/*', (req: Request, res: Response) => {
+    // If the request is for an API but reached here, it's a 404
+    if (req.path.startsWith('/api')) {
+        return res.status(404).json({ message: "API route not found" });
+    }
+    res.sendFile(indexPath);
+});
 
 // --- 7. SERVER INITIALIZATION ---
 const startServer = async () => {
