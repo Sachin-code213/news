@@ -28,7 +28,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ toggleDarkMode, darkMode }) => 
     const { lang, setLang } = useLanguage();
     const location = useLocation();
 
-    // 🚀 1. Fetch Election Data
     const { data: electionData = [] } = useQuery({
         queryKey: ['election-results'],
         queryFn: async () => {
@@ -38,7 +37,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ toggleDarkMode, darkMode }) => 
         refetchInterval: 30000
     });
 
-    // 🚀 2. Fetch Global Settings
     const { data: settings, isLoading: settingsLoading } = useQuery({
         queryKey: ['site-settings'],
         queryFn: async () => {
@@ -46,15 +44,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ toggleDarkMode, darkMode }) => 
             return res.data?.data;
         }
     });
-
-    // 🔍 Debugging Logs - These will show you EXACTLY why it might be hidden
-    useEffect(() => {
-        if (!settingsLoading) {
-            console.log("📍 Current Path:", location.pathname);
-            console.log("🔘 Switch ON?:", settings?.showElectionTally);
-            console.log("📊 Data Count:", electionData?.length);
-        }
-    }, [location.pathname, settings, electionData, settingsLoading]);
 
     useEffect(() => {
         const root = window.document.documentElement;
@@ -65,7 +54,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ toggleDarkMode, darkMode }) => 
         window.scrollTo(0, 0);
     }, [location.pathname]);
 
-    // 🛠️ Improved Homepage Detection
     const isHomePage = location.pathname === '/' || location.pathname === '/home' || location.pathname === '';
 
     return (
@@ -78,7 +66,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ toggleDarkMode, darkMode }) => 
             </div>
 
             {/* Navigation Bar */}
-            <div className="bg-white dark:bg-slate-900 border-b dark:border-slate-800 sticky top-0 md:top-12 z-40 shadow-sm transition-colors">
+            <div className="bg-white dark:bg-slate-900 border-b dark:border-slate-800 sticky top-0 md:top-12 z-40 shadow-sm">
                 <div className="container mx-auto px-4">
                     <nav className="flex items-center gap-6 h-12 overflow-x-auto no-scrollbar scroll-smooth">
                         {categories.map((cat) => (
@@ -97,57 +85,62 @@ const MainLayout: React.FC<MainLayoutProps> = ({ toggleDarkMode, darkMode }) => 
                 </div>
             </div>
 
-            {/* 🇳🇵 Election Tally (FULL WIDTH - Only on Home Page) */}
+            {/* 🇳🇵 Election Tally */}
             {isHomePage && settings?.showElectionTally && electionData.length > 0 && (
-                <div className="container mx-auto px-4 mt-6 animate-in fade-in slide-in-from-top-4 duration-700">
+                <div className="container mx-auto px-4 mt-6">
                     <ElectionTally
                         candidates={electionData}
-                        title={settings.electionTitle || (lang === 'en' ? 'Live Election Count' : 'प्रत्यक्ष निर्वाचन परिणाम')}
+                        title={settings.electionTitle || (lang === 'en' ? 'Live Count' : 'प्रत्यक्ष गणना')}
                     />
                 </div>
             )}
 
             {/* Main Content Area */}
             <main className="container mx-auto px-4 py-8 flex-grow">
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                {/* 🚀 FIXED GRID: grid-cols-1 ensures stacking on mobile, lg:grid-cols-4 for desktop side-by-side */}
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-10 items-start">
 
-                    {/* LEFT CONTENT */}
-                    <div className="lg:col-span-3">
+                    {/* LEFT CONTENT (Primary) */}
+                    <div className="lg:col-span-3 order-1">
                         <Outlet context={{ darkMode }} />
                         <div className="mt-12">
                             <AdSpace position="home-middle" />
                         </div>
                     </div>
 
-                    {/* RIGHT SIDEBAR - FIXED RESPONSIVENESS */}
-                    {/* Removed 'hidden md:block'. Now it shows on all devices. */}
-                    <aside className="lg:col-span-1 w-full space-y-8">
+                    {/* RIGHT SIDEBAR (Secondary) */}
+                    {/* 🚀 REMOVED 'hidden' entirely so it never disappears on mobile resize */}
+                    <aside className="lg:col-span-1 w-full space-y-10 order-2">
 
-                        {/* 1. Trending Sidebar */}
-                        <TrendingSidebar />
+                        {/* 1. Trending Items */}
+                        <div className="w-full">
+                            <TrendingSidebar />
+                        </div>
 
-                        {/* 2. Sidebar Ad Top */}
-                        <AdSpace position="sidebar-top" />
-
-                        {/* 3. 🚀 RESPONSIVE STICKY AD SLOT (Just below sidebar) */}
-                        <div className="lg:sticky lg:top-32 space-y-4">
-                            <div className="group relative">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                        {lang === 'en' ? 'Sponsored' : 'प्रायोजित'}
+                        {/* 2. Professional Sponsored Ad Section */}
+                        <div className="lg:sticky lg:top-32 space-y-6">
+                            <div className="relative group p-1">
+                                {/* Header label for the ad */}
+                                <div className="flex items-center gap-2 mb-3 px-1">
+                                    <div className="h-px bg-slate-200 dark:bg-slate-800 flex-grow"></div>
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+                                        {lang === 'en' ? 'ADVERTISEMENT' : 'विज्ञापन'}
                                     </span>
+                                    <div className="h-px bg-slate-200 dark:bg-slate-800 flex-grow"></div>
                                 </div>
-                                <div className="p-2 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-900/20">
-                                    <AdSpace position="sidebar-sticky" className="w-full rounded-xl overflow-hidden" />
-                                </div>
-                            </div>
 
-                            {/* Professional touch */}
-                            <p className="text-[10px] text-slate-400 px-2 leading-tight">
-                                {lang === 'en'
-                                    ? 'Support KhabarPoint by viewing our partner content.'
-                                    : 'हाम्रो पार्टनर सामग्री हेरेर खबरप्वाइन्टलाई समर्थन गर्नुहोस्।'}
-                            </p>
+                                {/* The Ad Box */}
+                                <div className="p-3 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-[2rem] bg-slate-50/50 dark:bg-slate-900/40 hover:bg-white dark:hover:bg-slate-900 transition-colors duration-300">
+                                    <AdSpace position="sidebar-sticky" className="w-full rounded-2xl overflow-hidden shadow-sm" />
+                                </div>
+
+                                {/* Support text */}
+                                <p className="mt-4 text-[10px] text-center text-slate-400 font-medium px-4 leading-relaxed italic">
+                                    {lang === 'en'
+                                        ? 'Help us bring you the truth. Support our partners.'
+                                        : 'सत्य समाचारका लागि हाम्रा साझेदारहरूलाई समर्थन गर्नुहोस्।'}
+                                </p>
+                            </div>
                         </div>
                     </aside>
 

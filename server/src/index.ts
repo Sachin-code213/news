@@ -34,7 +34,6 @@ import electionRoutes from './routes/electionRoutes';
 
 dotenv.config();
 
-// Fix for Node 22 DNS issues sometimes seen on cloud providers
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 const app: Express = express();
@@ -62,7 +61,7 @@ app.use(cors({
 
 app.use(helmet({
     crossOriginResourcePolicy: false,
-    contentSecurityPolicy: false
+    contentSecurityPolicy: false // Required for meta-injection to work correctly with external images
 }));
 
 app.use(express.json({ limit: '10mb' }));
@@ -73,7 +72,6 @@ if (process.env.NODE_ENV === 'development') {
     app.use(morgan('dev'));
 }
 
-// 🧼 NoSQL Injection Protection
 app.use((req: Request, res: Response, next: NextFunction) => {
     const clean = (obj: any) => {
         if (obj && typeof obj === 'object') {
@@ -144,15 +142,14 @@ const clientPath = path.join(__dirname, '../../client/dist');
 const indexPath = path.join(clientPath, 'index.html');
 
 /**
- * 🚀 UNIVERSAL META-INJECTOR
- * Fixes thumbnails for Facebook, WhatsApp, LinkedIn, and Twitter
- * Intercepts /article/:slug to serve meta tags to bots
+ * 🚀 DYNAMIC NEWS INJECTOR
+ * Optimized for Facebook, WhatsApp, LinkedIn, and X (Twitter)
  */
 app.get('/article/:slug', async (req: Request, res: Response) => {
     try {
-        // Find article by slug (matching Vercel URL)
         const article = await Article.findOne({ slug: req.params.slug });
 
+        // If article doesn't exist, fall back to standard React index
         if (!article) {
             return res.sendFile(indexPath);
         }
@@ -160,51 +157,48 @@ app.get('/article/:slug', async (req: Request, res: Response) => {
         fs.readFile(indexPath, 'utf8', (err, htmlData) => {
             if (err) return res.sendFile(indexPath);
 
-            // 1. Prepare SEO Content
-            const title = article.titleEn || article.titleNe || "KhabarPoint News";
-            const description = (article.summaryEn || article.summaryNe || "Stay updated with KhabarPoint").substring(0, 160);
+            // 1. Data Preparation
+            const title = `${article.titleNe || article.titleEn} | KhabarPoint`;
+            const description = (article.summaryNe || article.summaryEn || article.excerptEn || "Stay updated with KhabarPoint").substring(0, 160);
 
-            // 2. Format Image for Social Media (Cloudinary transformation for WhatsApp/Mobile <300KB)
+            // 2. Image Optimization (Cloudinary auto-format & social-friendly sizing)
             const imageUrl = article.image?.includes('cloudinary')
-                ? article.image.replace('/upload/', '/upload/w_600,h_315,c_fill,q_auto,f_jpg/')
+                ? article.image.replace('/upload/', '/upload/w_1200,h_630,c_fill,q_auto,f_jpg/')
                 : article.image;
 
             const siteUrl = process.env.CLIENT_URL || 'https://khabarpoint.vercel.app';
+            const fullUrl = `${siteUrl}/article/${req.params.slug}`;
 
-            // 3. Inject Meta Tags via string replacement
+            // 3. Dynamic Injection using Global Regex
+            // This replaces the placeholder values in your index.html with real news data
             let modifiedHtml = htmlData
-                .replace(/<title>.*?<\/title>/, `<title>${title} | KhabarPoint</title>`)
-                .replace(/property="og:title" content=".*?"/g, `property="og:title" content="${title}"`)
-                .replace(/property="og:description" content=".*?"/g, `property="og:description" content="${description}"`)
-                .replace(/property="og:image" content=".*?"/g, `property="og:image" content="${imageUrl}"`)
-                .replace(/property="og:url" content=".*?"/g, `property="og:url" content="${siteUrl}/article/${req.params.slug}"`)
-                .replace(/name="description" content=".*?"/g, `name="description" content="${description}"`);
-
-            // Add extra tags for WhatsApp/Twitter/Google if missing
-            if (!modifiedHtml.includes('twitter:card')) {
-                modifiedHtml = modifiedHtml.replace('</head>',
-                    `<meta name="twitter:card" content="summary_large_image">
-                     <meta itemprop="image" content="${imageUrl}">
-                     </head>`);
-            }
+                .replace(/<title>.*?<\/title>/, `<title>${title}</title>`)
+                // Replaces <meta property="og:title" content="..."> etc.
+                .replace(/(property="og:title"\s+content=").*?(")/, `$1${title}$2`)
+                .replace(/(property="og:description"\s+content=").*?(")/, `$1${description}$2`)
+                .replace(/(property="og:image"\s+content=").*?(")/, `$1${imageUrl}$2`)
+                .replace(/(property="og:url"\s+content=").*?(")/, `$1${fullUrl}$2`)
+                // Replaces <meta property="twitter:title" content="..."> etc.
+                .replace(/(property="twitter:title"\s+content=").*?(")/, `$1${title}$2`)
+                .replace(/(property="twitter:description"\s+content=").*?(")/, `$1${description}$2`)
+                .replace(/(property="twitter:image"\s+content=").*?(")/, `$1${imageUrl}$2`)
+                // Replaces standard description
+                .replace(/(name="description"\s+content=").*?(")/, `$1${description}$2`);
 
             return res.send(modifiedHtml);
         });
     } catch (error) {
+        console.error("Meta injection error:", error);
         res.sendFile(indexPath);
     }
 });
 
-// Static assets serving
+// Serve frontend static files AFTER the dynamic route
 app.use(express.static(clientPath));
 
-// Standard Frontend Catch-all (for Home, About, etc.)
-app.get(/^(?!\/api).+/, (req: Request, res: Response) => {
-    res.sendFile(indexPath, (err) => {
-        if (err) {
-            res.status(404).send('Frontend not built or index.html missing');
-        }
-    });
+// Standard Frontend Catch-all
+app.get('*', (req: Request, res: Response) => {
+    res.sendFile(indexPath);
 });
 
 // --- 6. ERROR HANDLING ---
